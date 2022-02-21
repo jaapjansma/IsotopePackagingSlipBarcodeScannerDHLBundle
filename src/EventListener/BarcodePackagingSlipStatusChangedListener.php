@@ -19,8 +19,14 @@
 namespace Krabo\IsotopePackagingSlipBarcodeScannerDHLBundle\EventListener;
 
 use Contao\Email;
+use Contao\System;
 use Isotope\Model\Shipping;
+use Krabo\IsotopePackagingSlipBarcodeScannerBundle\Event\FormBuilderEvent;
+use Krabo\IsotopePackagingSlipBarcodeScannerBundle\Event\PackagingSlipStatusChangedEvent;
 use Krabo\IsotopePackagingSlipDHLBundle\Factory\DHLConnectionFactoryInterface;
+use Symfony\Component\Form\Extension\Core\Type\EmailType;
+use Symfony\Component\Form\Extension\Core\Type\TextType;
+use Symfony\Component\HttpFoundation\RequestStack;
 
 class BarcodePackagingSlipStatusChangedListener implements \Symfony\Component\EventDispatcher\EventSubscriberInterface {
 
@@ -29,8 +35,14 @@ class BarcodePackagingSlipStatusChangedListener implements \Symfony\Component\Ev
    */
   protected $connectionFactory;
 
-  public function __construct(DHLConnectionFactoryInterface $connectionFactory) {
+  /**
+   * @var \Symfony\Component\HttpFoundation\RequestStack
+   */
+  protected $requestStack;
+
+  public function __construct(DHLConnectionFactoryInterface $connectionFactory, RequestStack $requestStack) {
     $this->connectionFactory = $connectionFactory;
+    $this->requestStack = $requestStack;
   }
 
   /**
@@ -57,11 +69,18 @@ class BarcodePackagingSlipStatusChangedListener implements \Symfony\Component\Ev
    */
   public static function getSubscribedEvents() {
     return [
-      \Krabo\IsotopePackagingSlipBarcodeScannerBundle\Event\PackagingSlipStatusChangedEvent::EVENT_STATUS_SHIPPED => 'onStatusShipped',
+      PackagingSlipStatusChangedEvent::EVENT_STATUS_SHIPPED => 'onStatusShipped',
+      FormBuilderEvent::EVENT_NAME => 'onFormBuilder',
     ];
   }
 
-  public function onStatusShipped(\Krabo\IsotopePackagingSlipBarcodeScannerBundle\Event\PackagingSlipStatusChangedEvent $event) {
+  public function onStatusShipped(PackagingSlipStatusChangedEvent $event) {
+    $submittedData = $event->getSubmittedData();
+    if (empty($submittedData['email'])) {
+      return;
+    }
+    $recipient = $submittedData['email'];
+    $this->requestStack->getCurrentRequest()->getSession()->set('krabo.isotope-packaging-slip-barcode-scanner-dhl.email', $recipient);
     $packagingSlip = $event->getPackagingSlip();
     $shippingMethod = Shipping::findByPk($packagingSlip->shipping_id);
     if (in_array($shippingMethod->type, ['isopackagingslip_dhl'])) {
@@ -80,9 +99,32 @@ class BarcodePackagingSlipStatusChangedListener implements \Symfony\Component\Ev
         $email->subject = 'PDF DHL Barcode';
         $email->text = 'See attachment';
         $email->attachFileFromString($pdf, 'barcode.pdf', 'application/pdf');
-        $email->sendTo('tkraus@krabo.nl');
+        $email->sendTo($recipient);
       }
     }
+  }
+
+  /**
+   * @param \Krabo\IsotopePackagingSlipBarcodeScannerBundle\Event\FormBuilderEvent $event
+   * @return void
+   */
+  public function onFormBuilder(FormBuilderEvent $event) {
+    $recipient = '';
+    if ($this->requestStack->getCurrentRequest()->getSession()->has('krabo.isotope-packaging-slip-barcode-scanner-dhl.email')) {
+      $recipient = $this->requestStack->getCurrentRequest()->getSession()->get('krabo.isotope-packaging-slip-barcode-scanner-dhl.email');
+    }
+
+    $event->formBuilder->add('email', EmailType::class, [
+      'label' => 'Email',
+      'attr' => [
+        'class' => 'tl_text',
+      ],
+      'row_attr' => [
+        'class' => 'widget'
+      ],
+    ]);
+    $event->formBuilder->get('email')->setData($recipient);
+    $event->additionalWidgets[] = 'email';
   }
 
 

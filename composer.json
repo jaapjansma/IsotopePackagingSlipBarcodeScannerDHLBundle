@@ -6,7 +6,7 @@
   "version": "1.0.0",
   "require": {
     "contao/core-bundle": "^4.9",
-    "krabo/isotope-packaging-slip-barcode-scanner-bundle": "1.0.0",
+    "krabo/isotope-packaging-slip-barcode-scanner-bundle": "^1.0.1",
     "krabo/isotope-packaging-slip-dhl-bundle": "^1.0.1"
   },
   "extra": {
