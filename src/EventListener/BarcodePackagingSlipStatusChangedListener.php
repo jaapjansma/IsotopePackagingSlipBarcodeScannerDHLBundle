@@ -114,7 +114,7 @@ class BarcodePackagingSlipStatusChangedListener implements \Symfony\Component\Ev
         }
         $email->sendTo($recipient);
       } else {
-        throw new \RuntimeException('Could not send Barcode to the printers email address');
+        throw new \RuntimeException('Could not send Barcode to the printers email address. Response from DHL (Code: '.$response->getStatusCode().'): '.$response->getBody()->getContents());
       }
     }
   }
