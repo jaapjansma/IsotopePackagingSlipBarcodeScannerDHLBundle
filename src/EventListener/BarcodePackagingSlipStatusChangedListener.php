@@ -20,10 +20,12 @@ namespace Krabo\IsotopePackagingSlipBarcodeScannerDHLBundle\EventListener;
 
 use Contao\Email;
 use Contao\System;
+use http\Exception\RuntimeException;
 use Isotope\Model\Shipping;
 use Krabo\IsotopePackagingSlipBarcodeScannerBundle\Event\FormBuilderEvent;
 use Krabo\IsotopePackagingSlipBarcodeScannerBundle\Event\PackagingSlipStatusChangedEvent;
 use Krabo\IsotopePackagingSlipDHLBundle\Factory\DHLConnectionFactoryInterface;
+use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\Extension\Core\Type\EmailType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\HttpFoundation\RequestStack;
@@ -80,7 +82,12 @@ class BarcodePackagingSlipStatusChangedListener implements \Symfony\Component\Ev
       return;
     }
     $recipient = $submittedData['email'];
+    $format = 'ZPL';
+    if (isset($submittedData['email_format'])) {
+      $format = $submittedData['email_format'];
+    }
     $this->requestStack->getCurrentRequest()->getSession()->set('krabo.isotope-packaging-slip-barcode-scanner-dhl.email', $recipient);
+    $this->requestStack->getCurrentRequest()->getSession()->set('krabo.isotope-packaging-slip-barcode-scanner-dhl.email_format', $format);
     $packagingSlip = $event->getPackagingSlip();
     $shippingMethod = Shipping::findByPk($packagingSlip->shipping_id);
     if (in_array($shippingMethod->type, ['isopackagingslip_dhl'])) {
@@ -92,14 +99,23 @@ class BarcodePackagingSlipStatusChangedListener implements \Symfony\Component\Ev
         'Authorization' => 'Bearer '.$client->authentication->getAccessToken()->token,
         'Accept' => 'application/pdf'
       ];
+      if ($format == 'ZPL') {
+        $requestHeaders['Accept'] = 'application/zpl';
+      }
       $response = $client->performHttpCall('GET', 'labels/'.$packagingSlip->dhl_id, null, $requestHeaders);
       if ($response->getStatusCode() == 200) {
-        $pdf = $response->getBody()->getContents();
+        $labelContents = $response->getBody()->getContents();
         $email = new Email();
         $email->subject = 'PDF DHL Barcode';
-        $email->text = 'See attachment';
-        $email->attachFileFromString($pdf, 'barcode.pdf', 'application/pdf');
+        if ($format =='ZPL') {
+          $email->text = $labelContents;
+        } else {
+          $email->text = 'See attachment';
+          $email->attachFileFromString($labelContents, 'barcode.pdf', 'application/pdf');
+        }
         $email->sendTo($recipient);
+      } else {
+        throw new RuntimeException('Could not send Barcode to the printers email address');
       }
     }
   }
@@ -113,6 +129,10 @@ class BarcodePackagingSlipStatusChangedListener implements \Symfony\Component\Ev
     if ($this->requestStack->getCurrentRequest()->getSession()->has('krabo.isotope-packaging-slip-barcode-scanner-dhl.email')) {
       $recipient = $this->requestStack->getCurrentRequest()->getSession()->get('krabo.isotope-packaging-slip-barcode-scanner-dhl.email');
     }
+    $format = 'ZPL';
+    if ($this->requestStack->getCurrentRequest()->getSession()->has('krabo.isotope-packaging-slip-barcode-scanner-dhl.email_format')) {
+      $format = $this->requestStack->getCurrentRequest()->getSession()->get('krabo.isotope-packaging-slip-barcode-scanner-dhl.email_format');
+    }
 
     $event->formBuilder->add('email', EmailType::class, [
       'label' => 'Email',
@@ -124,7 +144,24 @@ class BarcodePackagingSlipStatusChangedListener implements \Symfony\Component\Ev
       ],
     ]);
     $event->formBuilder->get('email')->setData($recipient);
+    $event->formBuilder->add('email_format', ChoiceType::class, [
+      'label' => 'Email format',
+      'choices' => [
+        'ZPL' => 'ZPL',
+        'PDF' => 'PDF',
+      ],
+      'attr' => [
+        'class' => 'tl_radio',
+      ],
+      'row_attr' => [
+        'class' => 'tl_radio_container'
+      ],
+      'expanded' => true,
+      'multiple' => false,
+    ]);
+    $event->formBuilder->get('email_format')->setData($format);
     $event->additionalWidgets[] = 'email';
+    $event->additionalWidgets[] = 'email_format';
   }
 
 
