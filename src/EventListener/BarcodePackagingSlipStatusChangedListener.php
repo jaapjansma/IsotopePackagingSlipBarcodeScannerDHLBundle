@@ -20,7 +20,6 @@ namespace Krabo\IsotopePackagingSlipBarcodeScannerDHLBundle\EventListener;
 
 use Contao\Email;
 use Contao\System;
-use http\Exception\RuntimeException;
 use Isotope\Model\Shipping;
 use Krabo\IsotopePackagingSlipBarcodeScannerBundle\Event\FormBuilderEvent;
 use Krabo\IsotopePackagingSlipBarcodeScannerBundle\Event\PackagingSlipStatusChangedEvent;
@@ -115,7 +114,7 @@ class BarcodePackagingSlipStatusChangedListener implements \Symfony\Component\Ev
         }
         $email->sendTo($recipient);
       } else {
-        throw new RuntimeException('Could not send Barcode to the printers email address');
+        throw new \RuntimeException('Could not send Barcode to the printers email address');
       }
     }
   }
