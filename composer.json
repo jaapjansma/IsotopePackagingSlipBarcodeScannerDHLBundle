@@ -3,11 +3,11 @@
   "description":"Isotope Packaging Slip Barcode Scanner.",
   "type": "contao-bundle",
   "license":"AGPL-3.0-or-later",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "require": {
     "contao/core-bundle": "^4.9",
-    "krabo/isotope-packaging-slip-barcode-scanner-bundle": "^1.0.1",
-    "krabo/isotope-packaging-slip-dhl-bundle": "^1.0.1"
+    "krabo/isotope-packaging-slip-barcode-scanner-bundle": "^1.0",
+    "krabo/isotope-packaging-slip-dhl-bundle": "^1.0"
   },
   "extra": {
     "contao-manager-plugin": "Krabo\\IsotopePackagingSlipBarcodeScannerDHLBundle\\ContaoManager\\Plugin"

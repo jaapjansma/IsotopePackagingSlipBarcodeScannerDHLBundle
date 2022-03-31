@@ -23,6 +23,7 @@ use Contao\System;
 use Isotope\Model\Shipping;
 use Krabo\IsotopePackagingSlipBarcodeScannerBundle\Event\FormBuilderEvent;
 use Krabo\IsotopePackagingSlipBarcodeScannerBundle\Event\PackagingSlipStatusChangedEvent;
+use Krabo\IsotopePackagingSlipBundle\Model\IsotopePackagingSlipShipperModel;
 use Krabo\IsotopePackagingSlipDHLBundle\Factory\DHLConnectionFactoryInterface;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\Extension\Core\Type\EmailType;
@@ -124,6 +125,10 @@ class BarcodePackagingSlipStatusChangedListener implements \Symfony\Component\Ev
    * @return void
    */
   public function onFormBuilder(FormBuilderEvent $event) {
+    if ($event->shopId != '__store') {
+      return;
+    }
+
     $recipient = '';
     if ($this->requestStack->getCurrentRequest()->getSession()->has('krabo.isotope-packaging-slip-barcode-scanner-dhl.email')) {
       $recipient = $this->requestStack->getCurrentRequest()->getSession()->get('krabo.isotope-packaging-slip-barcode-scanner-dhl.email');
