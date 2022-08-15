@@ -19,12 +19,15 @@
 namespace Krabo\IsotopePackagingSlipBarcodeScannerDHLBundle\EventListener;
 
 use Contao\Email;
+use Contao\Message;
 use Contao\System;
 use Isotope\Model\Shipping;
 use Krabo\IsotopePackagingSlipBarcodeScannerBundle\Event\FormBuilderEvent;
+use Krabo\IsotopePackagingSlipBarcodeScannerBundle\Event\FormBuilderWithPackagingSlipEvent;
 use Krabo\IsotopePackagingSlipBarcodeScannerBundle\Event\PackagingSlipStatusChangedEvent;
 use Krabo\IsotopePackagingSlipBundle\Model\IsotopePackagingSlipShipperModel;
 use Krabo\IsotopePackagingSlipDHLBundle\Factory\DHLConnectionFactoryInterface;
+use Mvdnbrk\DhlParcel\Endpoints\ServicePoints;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\Extension\Core\Type\EmailType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
@@ -73,6 +76,7 @@ class BarcodePackagingSlipStatusChangedListener implements \Symfony\Component\Ev
     return [
       PackagingSlipStatusChangedEvent::EVENT_STATUS_SHIPPED => 'onStatusShipped',
       FormBuilderEvent::EVENT_NAME => 'onFormBuilder',
+      FormBuilderWithPackagingSlipEvent::EVENT_NAME => 'onFormBuilderWithPackagingSlip'
     ];
   }
 
@@ -116,6 +120,17 @@ class BarcodePackagingSlipStatusChangedListener implements \Symfony\Component\Ev
         $email->sendTo($recipient);
       } else {
         throw new \RuntimeException('Could not send Barcode to the printers email address. Response from DHL (Code: '.$response->getStatusCode().'): '.$response->getBody()->getContents());
+      }
+    }
+  }
+
+  public function onFormBuilderWithPackagingSlip(FormBuilderWithPackagingSlipEvent $event) {
+    if ($event->packagingSlip->dhl_servicepoint_id) {
+      $client = $this->connectionFactory->getClient();
+      $servicePoints = $client->servicePoints->get(['q' => $event->packagingSlip->dhl_servicepoint_id]);
+      if (!$servicePoints->count()) {
+        $msg = $GLOBALS['TL_LANG']['IsotopePackagingSlipBarcodeScannerDhlBundle']['InvalidServicePoint'];
+        Message::addError($msg, 'isotopepackagingslipbarcodescanner_confirmstore');
       }
     }
   }
