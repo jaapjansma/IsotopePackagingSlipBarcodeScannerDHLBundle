@@ -94,7 +94,8 @@ class BarcodePackagingSlipStatusChangedListener implements \Symfony\Component\Ev
     $this->requestStack->getCurrentRequest()->getSession()->set('krabo.isotope-packaging-slip-barcode-scanner-dhl.email_format', $format);
     $packagingSlip = $event->getPackagingSlip();
     $shippingMethod = Shipping::findByPk($packagingSlip->shipping_id);
-    if (in_array($shippingMethod->type, ['isopackagingslip_dhl'])) {
+    $shipper = IsotopePackagingSlipShipperModel::findByPk($packagingSlip->shipper_id);
+    if (in_array($shippingMethod->type, ['isopackagingslip_dhl']) && $shipper && $shipper->auto_create_dhl_parcel) {
       if (!$packagingSlip->dhl_id) {
         $this->connectionFactory->createParcel($packagingSlip);
       }
