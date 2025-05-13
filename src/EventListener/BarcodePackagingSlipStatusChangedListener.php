@@ -95,7 +95,7 @@ class BarcodePackagingSlipStatusChangedListener implements \Symfony\Component\Ev
     $packagingSlip = $event->getPackagingSlip();
     $shippingMethod = Shipping::findByPk($packagingSlip->shipping_id);
     $shipper = IsotopePackagingSlipShipperModel::findByPk($packagingSlip->shipper_id);
-    if (in_array($shippingMethod->type, ['isopackagingslip_dhl']) && $shipper && $shipper->auto_create_dhl_parcel) {
+    if (in_array($shippingMethod->type, ['isopackagingslip_dhl', 'isopackagingslip_dhl_parcel_shop']) && $shipper && $shipper->auto_create_dhl_parcel) {
       if (!$packagingSlip->dhl_id) {
         $this->connectionFactory->createParcel($packagingSlip);
       }
